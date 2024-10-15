@@ -11,7 +11,7 @@ import DatePicker from "react-multi-date-picker";
 
 const App = () => {
     const [selectedOutcomes, setSelectedOutcomes] = useState([]);
-    const [exitSpeedRange, setExitSpeedRange] = useState([20, 130]);
+    const [exitSpeedRange, setExitSpeedRange] = useState([0, 130]);
     const [launchAngleRange, setLaunchAngleRange] = useState([-100, 100]);
     const [batterNames, setBatterNames] = useState("");
     const [pitcherNames, setPitcherNames] = useState("");
@@ -235,7 +235,7 @@ const App = () => {
                         onChange={handleExitSpeedChange}
                         valueLabelDisplay="auto"
                         valueLabelFormat={(value) => `${value} mph`}
-                        min={20}
+                        min={0}
                         max={130}
                         step={1}
                     />
@@ -249,8 +249,8 @@ const App = () => {
                         onChange={handleLaunchAngleChange}
                         valueLabelDisplay="auto"
                         valueLabelFormat={(value) => `${value}°`}
-                        min={-45}
-                        max={45}
+                        min={-100}
+                        max={100}
                         step={1}
                     />
                 </Box>
