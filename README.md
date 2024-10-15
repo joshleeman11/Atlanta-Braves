@@ -1,6 +1,6 @@
 # Baseball Data Visualization Project
 
-This is a web-based application that visualize and contextualize the data enclosed in BattedBallData.csv. Users can filter batted ball data by various parameters such as outcome, exit speed, launch angle, batters, pitchers, and dates.
+This is a web-based application that visualizes and contextualizes the data enclosed in BattedBallData.csv. Users can filter batted ball data by various parameters such as outcome, exit speed, launch angle, batters, pitchers, and dates.
 
 # Installation/Setup
 ### Clone repo
