@@ -13,23 +13,6 @@ app = Flask(__name__)
 CORS(app)
 
 
-@app.route("/api/data", methods=["GET"])
-def get_data():
-    try:
-        # Load data from CSV
-        data = pd.read_csv("BattedBallData.csv")
-        print("Data Loaded Successfully:")
-        print(data.head())  # Log first few rows to the console
-
-        # Handle NaN values
-        data_cleaned = data.dropna()
-        json_data = data_cleaned.to_dict(orient="records")
-
-        return jsonify(json_data)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500  # Return error if something goes wrong
-
-
 @app.route("/api/graph", methods=["POST"])
 def generate_graph():
 
@@ -37,66 +20,141 @@ def generate_graph():
         data = request.get_json()
         print(data)
         outcomes = data.get("outcomes", [])
+        if not outcomes:
+            outcomes = ['Single', 'Double', 'Triple', 'HomeRun', 'Out', 'Error']
+        print(outcomes)
         exit_speed_range = data.get("exitSpeedRange", [])
         launch_angle_range = data.get("launchAngleRange", [])
-        batter_name = data.get("batterName", "")
-        pitcher_name = data.get("pitcherName", "")
+        batter_names = data.get("batterNames", "")
+        pitcher_names = data.get("pitcherNames", "")
+        dates = data.get("dates", [])
+        color_by = data.get("colorBy", "outcome")
+
         df = pd.read_csv("BattedBallData.csv")
-        
+
         if outcomes:
-            df = df[df['PLAY_OUTCOME'].isin(outcomes)]
-        else:
-            return jsonify({"error": "No outcomes provided"}), 400
-        
+            df = df[df["PLAY_OUTCOME"].isin(outcomes)]
+
         if exit_speed_range:
             min_speed, max_speed = exit_speed_range
-            df = df[(df['EXIT_SPEED'] >= min_speed) & (df['EXIT_SPEED'] <= max_speed)]
-            
+            df = df[(df["EXIT_SPEED"] >= min_speed) & (df["EXIT_SPEED"] <= max_speed)]
+
         if launch_angle_range:
             min_angle, max_angle = launch_angle_range
-            df = df[(df['LAUNCH_ANGLE'] >= min_angle) & (df['LAUNCH_ANGLE'] <= max_angle)]
-            
-        if batter_name:
-            print(batter_name)
-            df = df[(df['BATTER']) == batter_name]
-            
-        if pitcher_name:
-            print(pitcher_name)
-            df = df[(df['PITCHER']) == pitcher_name]
+            df = df[
+                (df["LAUNCH_ANGLE"] >= min_angle) & (df["LAUNCH_ANGLE"] <= max_angle)
+            ]
+
+        if not batter_names[0] == '':
+            print(batter_names)
+            df = df[(df["BATTER"]).isin(batter_names)]
+
+        if not pitcher_names[0] == '':
+            print(pitcher_names)
+            df = df[(df["PITCHER"]).isin(pitcher_names)]
+
+        if dates:
+            print(dates)
+            df = df[(df["GAME_DATE"]).isin(dates)]
 
         if df.empty:
-            return jsonify({"error": "No data available for the specified outcomes"}), 404
-        
+            return (
+                jsonify({"error": "No data available for the specified outcomes"}),
+                404,
+            )
+
         print(df)
         # Calculate the x (horizontal) and y (vertical) coordinates of the ball's landing spot
-        df['EXIT_DIRECTION_RAD'] = np.deg2rad(df['EXIT_DIRECTION'])
-        
-        df['x'] = df['HIT_DISTANCE'] * np.sin(df['EXIT_DIRECTION_RAD'])
-        df['y'] = df['HIT_DISTANCE'] * np.cos(df['EXIT_DIRECTION_RAD'])
-        
-        OUTCOME_COLORS = {
-            "Single": "blue",
-            "Double": "yellow",
-            "Triple": "orange",
-            "HomeRun": "red",
-            "Out": "gray",
-            "Error": "black"
-        }
+        df["EXIT_DIRECTION_RAD"] = np.deg2rad(df["EXIT_DIRECTION"])
+
+        df["x"] = df["HIT_DISTANCE"] * np.sin(df["EXIT_DIRECTION_RAD"])
+        df["y"] = df["HIT_DISTANCE"] * np.cos(df["EXIT_DIRECTION_RAD"])
 
         # Create an instance of MLBField
         mlb_field = MLBField()
 
         # Create a figure and axes object for the field plot
         fig, ax = plt.subplots(figsize=(10, 10))
-        
-        for outcome in OUTCOME_COLORS:
-            if outcome in outcomes:
-                outcome_data = df[df['PLAY_OUTCOME'] == outcome]
-                if not outcome_data.empty:
-                    print(outcome)
-                    # Overlay the point at home plate (assuming home plate is at (0, 0))
-                    ax.scatter(outcome_data['x'], outcome_data['y'], label=outcome, color=OUTCOME_COLORS[outcome], zorder=15, s=35)
+
+        # Define different color schemes based on `color_by` parameter
+        if color_by == "outcome":
+            OUTCOME_COLORS = {
+                "Single": "blue",
+                "Double": "yellow",
+                "Triple": "orange",
+                "HomeRun": "red",
+                "Out": "gray",
+                "Error": "black",
+            }
+            for outcome in OUTCOME_COLORS:
+                if outcome in outcomes:
+                    outcome_data = df[df["PLAY_OUTCOME"] == outcome]
+                    if not outcome_data.empty:
+                        print(outcome)
+                        ax.scatter(
+                            outcome_data["x"],
+                            outcome_data["y"],
+                            label=outcome,
+                            color=OUTCOME_COLORS[outcome],
+                            zorder=15,
+                            s=35,
+                        )
+
+        elif color_by == "date":
+            unique_dates = df["GAME_DATE"].unique()
+            colors = plt.cm.viridis(np.linspace(0, 1, len(unique_dates)))
+            for i, date in enumerate(unique_dates):
+                date_data = df[df["GAME_DATE"] == date]
+                ax.scatter(
+                    date_data["x"],
+                    date_data["y"],
+                    label=date,
+                    color=colors[i],
+                    zorder=15,
+                    s=35,
+                )
                 
+        elif color_by == "batter_name":
+            unique_batters = df["BATTER"].unique()
+            colors = plt.cm.viridis(np.linspace(0, 1, len(unique_batters)))
+            for i, batter in enumerate(unique_batters):
+                batter_data = df[df["BATTER"] == batter]
+                ax.scatter(
+                    batter_data["x"],
+                    batter_data["y"],
+                    label=batter,
+                    color=colors[i],
+                    zorder=15,
+                    s=35,
+                )
+                
+        elif color_by == "pitcher_name":
+            unique_pitchers = df["PITCHER"].unique()
+            colors = plt.cm.viridis(np.linspace(0, 1, len(unique_pitchers)))
+            for i, pitcher in enumerate(unique_pitchers):
+                pitcher_data = df[df["PITCHER"] == pitcher]
+                ax.scatter(
+                    pitcher_data["x"],
+                    pitcher_data["y"],
+                    label=pitcher,
+                    color=colors[i],
+                    zorder=15,
+                    s=35,
+                )
+                
+        elif color_by == "exit_speed":
+            norm = plt.Normalize(
+                vmin=df["EXIT_SPEED"].min(), vmax=df["EXIT_SPEED"].max()
+            )
+            sm = plt.cm.ScalarMappable(cmap="cool", norm=norm)
+            sm.set_array([])
+            ax.scatter(
+                df["x"], df["y"], c=df["EXIT_SPEED"], cmap="cool", zorder=15, s=35
+            )
+            plt.colorbar(sm, ax=ax)
+
+        else:
+            return jsonify({"error": "Invalid color_by option"}), 400
 
         # Add a green rectangle as the field background (representing grass)
         field_background = patches.Rectangle(
