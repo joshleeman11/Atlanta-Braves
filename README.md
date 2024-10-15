@@ -35,8 +35,3 @@ sportypy: Python library to draw the MLB field and visualize baseball fields in 
 
 ### Data:
 BattedBallData.csv
-
-
-
-
-Axios / Fetch (for API requests): To send data and receive responses (such as image data) between React and Flask.
